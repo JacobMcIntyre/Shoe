@@ -1,0 +1,62 @@
+import RPI.GPIO as GPIO
+import time
+
+MOTOR = 19
+TRIG = 35
+ECHO = 37
+
+distTimer = 0
+assistTimer = 0
+
+def setup()
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(ECHO, GPIO.IN)
+    GPIO.setup(TRIG, GPIO.OUT)
+    GPIO.setup(MOTOR, GPIO.OUT)
+    GPIO.output(MOTOR, GPIO.HIGH)
+
+def destroy()
+    GPIO.output(MOTOR, GPIO.HIGH)
+    GPIO.cleanup()
+
+def getDistance()
+    GPIO.output(TRIG, 0)
+    time.sleep(0.000001)
+    
+    GPIO.output(TRIG, 1)
+    time.sleep(0.00001)
+    GPIO.output(TRIG, 0)
+    
+    while GPIO.input(ECHO) == 0:
+    a = 0
+    time1 = time.time()
+    while GPIO.input(ECHO) == 1:
+    a = 1
+    time2 = time.time()
+    
+    return (time2 - time1) * 17000
+    
+def beep()
+    if assistTimer == 0
+        assistTimer = time.time()
+    
+    distTimer = time.time() - assistTimer
+    if distTimer > .25
+        print yipee
+    
+def run()
+    global assistTimer
+    while True:
+        dist = getDistance()
+        if dist < 300:
+            beep()
+        else:
+            assistTimer = 0
+
+if __name__ == '__main__':
+    setup()
+    try:
+        run()
+    except KeyboardInput: #ctrl + C
+        destroy()
+    
