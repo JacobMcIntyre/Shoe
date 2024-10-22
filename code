@@ -1,25 +1,51 @@
-import RPI.GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
+import adafruit_tcs34725
+import board
 
-MOTOR = 19
-TRIG = 35
-ECHO = 37
+MOTOR = 4 #GPIO4
+#GND
+
+TRIG = 19 #GPIO19
+ECHO = 26 #GPIO26
+#VCC -> 3v3
+#GND
+
+#SCL1
+#SDA1
+#VIN -> 3v3
+#GND
 
 distTimer = 0
 assistTimer = 0
+color = (1, 1, 1)
+vibrateTime = 0
+assistTimer2 = 0
+sensor = adafruit_tcs34725.TCS34725(board.I2C())
 
-def setup()
-    GPIO.setmode(GPIO.BOARD)
+
+def setup():
+    #sensor = adafruit_tcs34725.TCS34725(board.I2C())
+    sensor.integration_time = 50
+    sensor.gain = 4
+    color = sensor.color_rgb_bytes
+    
+    GPIO.setmode(GPIO.BCM)
     GPIO.setup(ECHO, GPIO.IN)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(MOTOR, GPIO.OUT)
     GPIO.output(MOTOR, GPIO.HIGH)
+    
+    
+    
+    
 
-def destroy()
+def destroy():
     GPIO.output(MOTOR, GPIO.HIGH)
     GPIO.cleanup()
 
-def getDistance()
+def getDistance():
+    
     GPIO.output(TRIG, 0)
     time.sleep(0.000001)
     
@@ -28,35 +54,74 @@ def getDistance()
     GPIO.output(TRIG, 0)
     
     while GPIO.input(ECHO) == 0:
-    a = 0
+        a = 0
     time1 = time.time()
     while GPIO.input(ECHO) == 1:
-    a = 1
+        a = 1
     time2 = time.time()
+    dist = (time2 - time1) * 17000
+    #print('dist', dist, 'cm')
+    return dist
     
-    return (time2 - time1) * 17000
-    
-def beep()
-    if assistTimer == 0
+def stickCheck():
+    global distTimer
+    global assistTimer
+    if assistTimer == 0:
         assistTimer = time.time()
     
     distTimer = time.time() - assistTimer
-    if distTimer > .25
-        print yipee
+    if distTimer > .25:
+        playAudio()
+
+def playAudio():
+    print('')
     
-def run()
-    global assistTimer
-    while True:
-        dist = getDistance()
-        if dist < 300:
-            beep()
+def colorCheck():
+    global color
+    color_rgb = sensor.color_rgb_bytes
+    
+    a = 0
+    while a < 3:
+        if abs(color_rgb[a] - color[a]) > 10:
+            vibrateTime = 3
+            color = color_rgb
+        a = a + 1
+    
+    vibrate()
+
+def vibrate():
+    print('vibrate')
+    global vibrateTime
+    if vibrateTime > 0:
+        if assistTimer2 == 0:
+            assistTimer2 = time.time()
+            GPIO.output(MOTOR, GPIO.HIGH)
         else:
-            assistTimer = 0
+            vibrateTime = vibrateTime - (time.time() - assistTimer2)
+            assistTimer2 = time.time()
+    else:
+        GPIO.output(MOTOR, GPIO.LOW)
+        assistTimer2 = 0
+        
+    
+def distanceCheck():
+    time.sleep(0.05)
+    dist = getDistance()
+    if dist < 300:
+        stickCheck()
+    else:
+        assistTimer = 0
+
+def loop():
+    while True:
+        #distanceCheck()
+        colorCheck()
+        time.sleep(0.5)
 
 if __name__ == '__main__':
     setup()
     try:
-        run()
-    except KeyboardInput: #ctrl + C
+        loop()
+    except KeyboardInterrupt: #ctrl + C
         destroy()
     
